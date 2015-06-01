@@ -45,8 +45,8 @@ func webHandler(ws *websocket.Conn) {
 	}
 }
 
-/*Serve ...*/
-func Serve() {
+/*Listen ...*/
+func Listen() {
 	server := websocket.Server{
 		Handler: websocket.Handler(webHandler),
 	}

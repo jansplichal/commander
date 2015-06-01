@@ -1,37 +1,9 @@
 package queue
 
-import (
-	"fmt"
-	"log"
+import "github.com/streadway/amqp"
 
-	"github.com/streadway/amqp"
-)
-
-/*Serve ...*/
-func Serve() {
-	conn, msgs, err := listenQueue("amqp://guest:guest@localhost:5672/", "CMD_IN")
-
-	if err != nil {
-		panic("Can not connect to queue ...")
-	}
-
-	if conn != nil {
-		defer conn.Close()
-	}
-
-	log.Printf(" [*] Waiting for messages. To exit press CTRL+C")
-	go func() {
-		for d := range msgs {
-			log.Printf("Received a message: %s", d.Body)
-		}
-	}()
-
-	var wait string
-	fmt.Scanln(&wait)
-
-}
-
-func listenQueue(url, queueName string) (*amqp.Connection, <-chan amqp.Delivery, error) {
+//ListenQueue ...
+func ListenQueue(url, queueName string) (*amqp.Connection, <-chan amqp.Delivery, error) {
 	conn, err := amqp.Dial(url)
 
 	if err != nil {
@@ -67,7 +39,7 @@ func listenQueue(url, queueName string) (*amqp.Connection, <-chan amqp.Delivery,
 	msgs, err := ch.Consume(
 		q.Name, // queue
 		"",     // consumer
-		false,  // auto-ack
+		true,   // auto-ack
 		false,  // exclusive
 		false,  // no-local
 		false,  // no-wait
