@@ -46,13 +46,13 @@ func webHandler(ws *websocket.Conn) {
 }
 
 /*Listen ...*/
-func Listen() {
+func Listen(path, port string) {
 	server := websocket.Server{
 		Handler: websocket.Handler(webHandler),
 	}
 
-	http.Handle("/", server)
-	err := http.ListenAndServe(":8888", nil)
+	http.Handle(path, server)
+	err := http.ListenAndServe(port, nil)
 
 	if err != nil {
 		panic("ListenAndServe: " + err.Error())

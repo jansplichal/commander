@@ -9,10 +9,17 @@ import (
 	"github.com/jansplichal/commander/ws"
 )
 
+const (
+	amqpURL   = "amqp://guest:guest@localhost:5672/"
+	queueName = "CMD_IN"
+	wsPath    = "/"
+	wsPort    = ":8888"
+)
+
 func main() {
 	fmt.Println("Starting command Server")
 
-	conn, msgs, err := queue.ListenQueue("amqp://guest:guest@localhost:5672/", "CMD_IN")
+	conn, msgs, err := queue.ListenQueue(amqpURL, queueName)
 
 	if conn != nil {
 		defer conn.Close()
@@ -24,10 +31,12 @@ func main() {
 
 	go func() {
 		for d := range msgs {
+			log.Printf("Reply to: %s", d.ReplyTo)
+			log.Printf("Correlation id: %s", d.CorrelationId)
 			log.Printf("Received a message: %s", d.Body)
 		}
 	}()
 
 	log.Printf(" [*] Waiting for messages. To exit press CTRL+C")
-	ws.Listen()
+	ws.Listen(wsPath, wsPort)
 }
