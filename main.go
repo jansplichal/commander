@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"log"
 
+	"gopkg.in/mgo.v2/bson"
+
+	"github.com/jansplichal/commander/db"
 	"github.com/jansplichal/commander/queue"
 	"github.com/jansplichal/commander/ws"
 )
@@ -17,6 +20,28 @@ const (
 )
 
 func main() {
+
+	con, err := db.Connect("localhost")
+	if err != nil {
+		panic("can not connect to database")
+	}
+	defer con.Close()
+
+	con.Use("test", "users")
+
+	err = con.Insert(&db.Person{Name: "Jan", Phone: "Splichal"}, &db.Person{Name: "Marie", Phone: "Kotrla"})
+	if err != nil {
+		fmt.Println("Can not insert person")
+	}
+
+	r, err := con.FindOne(bson.M{"name": "Marie"}, &db.Person{})
+	// fmt.Println("Raw", p.Name)
+	if str, ok := r.(*db.Person); ok {
+		fmt.Println("Result from db", str.Name)
+	} else {
+		fmt.Println("Wrong conversion")
+	}
+
 	fmt.Println("Starting command Server")
 
 	conn, msgs, err := queue.ListenQueue(amqpURL, queueName)
@@ -36,7 +61,7 @@ func main() {
 			log.Printf("Received a message: %s", d.Body)
 		}
 	}()
-
 	log.Printf(" [*] Waiting for messages. To exit press CTRL+C")
+
 	ws.Listen(wsPath, wsPort)
 }
