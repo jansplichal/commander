@@ -58,3 +58,8 @@ func Listen(path, port string) {
 		panic("ListenAndServe: " + err.Error())
 	}
 }
+
+/*SendToClient ...*/
+func SendToClient() {
+
+}

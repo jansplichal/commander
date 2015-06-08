@@ -4,64 +4,70 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
+	"os/signal"
 
-	"gopkg.in/mgo.v2/bson"
-
-	"github.com/jansplichal/commander/db"
 	"github.com/jansplichal/commander/queue"
 	"github.com/jansplichal/commander/ws"
 )
 
 const (
-	amqpURL   = "amqp://guest:guest@localhost:5672/"
-	queueName = "CMD_IN"
-	wsPath    = "/"
-	wsPort    = ":8888"
+	amqpURL  = "amqp://guest:guest@localhost:5672/"
+	queueIn  = "CMD_IN"
+	queueOut = "CMD_OUT_ASYNC"
+	wsPath   = "/"
+	wsPort   = ":8888"
 )
 
 func main() {
 
-	con, err := db.Connect("localhost")
-	if err != nil {
-		panic("can not connect to database")
-	}
-	defer con.Close()
+	// con, err := db.Connect("localhost")
+	// if err != nil {
+	// 	panic("can not connect to database")
+	// }
+	// defer con.Close()
+	//
+	// con.Use("test", "users")
+	//
+	// err = con.Insert(&db.Person{Name: "Jan", Phone: "Splichal"}, &db.Person{Name: "Marie", Phone: "Kotrla"})
+	// if err != nil {
+	// 	fmt.Println("Can not insert person")
+	// }
+	//
+	// r, err := con.FindOne(bson.M{"name": "Marie"}, &db.Person{})
+	// // fmt.Println("Raw", p.Name)
+	// if str, ok := r.(*db.Person); ok {
+	// 	fmt.Println("Result from db", str.Name)
+	// } else {
+	// 	fmt.Println("Wrong conversion")
+	// }
 
-	con.Use("test", "users")
-
-	err = con.Insert(&db.Person{Name: "Jan", Phone: "Splichal"}, &db.Person{Name: "Marie", Phone: "Kotrla"})
-	if err != nil {
-		fmt.Println("Can not insert person")
-	}
-
-	r, err := con.FindOne(bson.M{"name": "Marie"}, &db.Person{})
-	// fmt.Println("Raw", p.Name)
-	if str, ok := r.(*db.Person); ok {
-		fmt.Println("Result from db", str.Name)
-	} else {
-		fmt.Println("Wrong conversion")
-	}
+	done := make(chan os.Signal, 1)
+	signal.Notify(done, os.Interrupt)
 
 	fmt.Println("Starting command Server")
 
-	conn, msgs, err := queue.ListenQueue(amqpURL, queueName)
+	q, err := queue.ListenQueue(amqpURL, queueIn)
 
-	if conn != nil {
-		defer conn.Close()
+	if q.Conn != nil {
+		defer q.Conn.Close()
+	}
+
+	if q.Channel != nil {
+		defer q.Channel.Close()
 	}
 
 	if err != nil {
 		panic("Can not connect to queue ...")
 	}
 
-	go func() {
-		for d := range msgs {
-			log.Printf("Reply to: %s", d.ReplyTo)
-			log.Printf("Correlation id: %s", d.CorrelationId)
-			log.Printf("Received a message: %s", d.Body)
-		}
-	}()
-	log.Printf(" [*] Waiting for messages. To exit press CTRL+C")
+	queue.PublishQueue(q)
 
-	ws.Listen(wsPath, wsPort)
+	log.Printf(" [*] Waiting for messages on queue " + queueIn)
+	go func() {
+		ws.Listen(wsPath, wsPort)
+	}()
+	log.Printf(" [*] Web socket server initialized ...")
+
+	<-done
 }
