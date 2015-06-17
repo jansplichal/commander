@@ -1,27 +1,51 @@
-//usr/local/go/bin/go run $0 $@ ; exit
+//usr/local/go/bin/go msgun $0 $@ ; exit
 package main
 
 import (
-	"fmt"
-	"sync"
+	"encoding/json"
+	"flag"
+
+	"github.com/streadway/amqp"
 )
 
-/*Name ..*/
-type Name struct {
-	a string
-	b string
-}
+const (
+	url      = "amqp://guest:guest@localhost:5672/"
+	queueIn  = "CMD_IN"
+	queueOut = "CMD_OUT_ASYNC"
+)
 
-var hits struct {
-	sync.Mutex
-	n int
+/*Message ...*/
+type Message struct {
+	Agent    string `json:"agent"`
+	Module   string `json:"module"`
+	Args     string `json:"args"`
+	Machines string `json:"machines"`
 }
 
 func main() {
-	fmt.Println("Starting a timer")
+	con, err := amqp.Dial(url)
+	defer con.Close()
 
-	fmt.Println(hits)
+	if err != nil {
+		panic("No connection")
+	}
 
-	var wait string
-	fmt.Scanln(&wait)
+	ch, err := con.Channel()
+	defer ch.Close()
+
+	if err != nil {
+		panic("Cannot create channel")
+	}
+
+	msg, err := json.Marshal(Message{Agent: "agent1", Module: "ping", Args: "", Machines: "wccs"})
+
+	n := flag.Uint("n", 1, "How many messages to put")
+	flag.Parse()
+
+	for i := 0; i < int(*n); i++ {
+		ch.Publish("", queueIn, false, false, amqp.Publishing{
+			ContentType: "text/plain",
+			Body:        msg,
+		})
+	}
 }
